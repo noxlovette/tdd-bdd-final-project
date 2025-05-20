@@ -72,7 +72,13 @@ class TestProductModel(unittest.TestCase):
 
     def test_create_a_product(self):
         """It should Create a product and assert that it exists"""
-        product = Product(name="Fedora", description="A red hat", price=12.50, available=True, category=Category.CLOTHS)
+        product = Product(
+            name="Fedora",
+            description="A red hat",
+            price=12.50,
+            available=True,
+            category=Category.CLOTHS,
+        )
         self.assertEqual(str(product), "<Product Fedora id=[None]>")
         self.assertTrue(product is not None)
         self.assertEqual(product.id, None)
@@ -131,16 +137,16 @@ class TestProductModel(unittest.TestCase):
         product.id = None
         product.create()
         self.assertIsNotNone(product.id)
-        
+
         # Change some properties
         product.description = "Updated description"
         original_id = product.id
         product.update()
-        
+
         # Ensure that the product has been updated and ID hasn't changed
         self.assertEqual(product.id, original_id)
         self.assertEqual(product.description, "Updated description")
-        
+
         # Fetch the product back and check if it's updated
         updated_product = Product.find(product.id)
         self.assertEqual(updated_product.id, product.id)
@@ -209,23 +215,22 @@ class TestProductModel(unittest.TestCase):
         products = ProductFactory.create_batch(10)
         for product in products:
             product.create()
-        
+
         # Set a price to search for
         target_price = Decimal("19.99")
-        
+
         # Count how many products have the target price
         count = len([product for product in products if product.price == target_price])
-        
+
         # Find products by the target price
         found = Product.find_by_price(target_price).all()
-        
+
         # Assert the correct number of products were found
         self.assertEqual(len(found), count)
-        
+
         # Ensure all found products have the correct price
         for product in found:
             self.assertEqual(product.price, target_price)
-
 
     def test_find_by_price_string_input(self):
         """It should handle price given as a string"""
@@ -236,20 +241,21 @@ class TestProductModel(unittest.TestCase):
 
         # Define a target price as a string
         target_price = "19.99"
-        
+
         # Count how many products have the target price
-        count = len([product for product in products if str(product.price) == target_price])
-        
+        count = len(
+            [product for product in products if str(product.price) == target_price]
+        )
+
         # Find products by the target price
         found = Product.find_by_price(target_price).all()
-        
+
         # Assert the correct number of products were found
         self.assertEqual(len(found), count)
-        
+
         # Ensure all found products have the correct price
         for product in found:
             self.assertEqual(str(product.price), target_price)
-
 
     def test_find_by_price_empty_result(self):
         """It should return an empty list if no product matches the price"""
@@ -264,7 +270,6 @@ class TestProductModel(unittest.TestCase):
         # Assert that no products were found
         self.assertEqual(len(found), 0)
 
-
     def test_deserialize_valid_data(self):
         """It should deserialize a product from valid data"""
         data = {
@@ -272,15 +277,14 @@ class TestProductModel(unittest.TestCase):
             "description": "A great product",
             "price": "19.99",
             "available": True,
-            "category": "CLOTHS"
+            "category": "CLOTHS",
         }
-    
+
         product = Product()
         product.deserialize(data)
-        
+
         self.assertEqual(product.name, "Product A")
         self.assertEqual(product.description, "A great product")
         self.assertEqual(product.price, Decimal("19.99"))
         self.assertEqual(product.available, True)
         self.assertEqual(product.category, Category.CLOTHS)
-    
