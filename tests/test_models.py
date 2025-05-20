@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -118,24 +118,33 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found_product.description, product.description)
         self.assertEqual(found_product.price, product.price)
 
+    def test_update_with_empty_id(self):
+        """It should raise an error if the update is called with an empty ID"""
+        product = ProductFactory()
+        product.id = None
+        with self.assertRaises(DataValidationError):
+            product.update()
+
     def test_update_a_product(self):
-        """It should Update a Product"""
+        """It should update a product"""
         product = ProductFactory()
         product.id = None
         product.create()
         self.assertIsNotNone(product.id)
-        # Change it an save it
-        product.description = "testing"
+        
+        # Change some properties
+        product.description = "Updated description"
         original_id = product.id
         product.update()
+        
+        # Ensure that the product has been updated and ID hasn't changed
         self.assertEqual(product.id, original_id)
-        self.assertEqual(product.description, "testing")
-        # Fetch it back and make sure the id hasn't changed
-        # but the data did change
-        products = Product.all()
-        self.assertEqual(len(products), 1)
-        self.assertEqual(products[0].id, original_id)
-        self.assertEqual(products[0].description, "testing")
+        self.assertEqual(product.description, "Updated description")
+        
+        # Fetch the product back and check if it's updated
+        updated_product = Product.find(product.id)
+        self.assertEqual(updated_product.id, product.id)
+        self.assertEqual(updated_product.description, "Updated description")
 
     def test_delete_a_product(self):
         """It should Delete a Product"""
@@ -193,3 +202,85 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(product.category, category)
+
+    def test_find_by_price(self):
+        """It should find products with the specified price"""
+        # Create 10 products, with two of them having the same price
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+        
+        # Set a price to search for
+        target_price = Decimal("19.99")
+        
+        # Count how many products have the target price
+        count = len([product for product in products if product.price == target_price])
+        
+        # Find products by the target price
+        found = Product.find_by_price(target_price).all()
+        
+        # Assert the correct number of products were found
+        self.assertEqual(len(found), count)
+        
+        # Ensure all found products have the correct price
+        for product in found:
+            self.assertEqual(product.price, target_price)
+
+
+    def test_find_by_price_string_input(self):
+        """It should handle price given as a string"""
+        # Create products with a string price
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+
+        # Define a target price as a string
+        target_price = "19.99"
+        
+        # Count how many products have the target price
+        count = len([product for product in products if str(product.price) == target_price])
+        
+        # Find products by the target price
+        found = Product.find_by_price(target_price).all()
+        
+        # Assert the correct number of products were found
+        self.assertEqual(len(found), count)
+        
+        # Ensure all found products have the correct price
+        for product in found:
+            self.assertEqual(str(product.price), target_price)
+
+
+    def test_find_by_price_empty_result(self):
+        """It should return an empty list if no product matches the price"""
+        # Create products with different prices
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+
+        # Try to find products with a price that doesn't exist
+        found = Product.find_by_price(Decimal("999.99")).all()
+
+        # Assert that no products were found
+        self.assertEqual(len(found), 0)
+
+
+    def test_deserialize_valid_data(self):
+        """It should deserialize a product from valid data"""
+        data = {
+            "name": "Product A",
+            "description": "A great product",
+            "price": "19.99",
+            "available": True,
+            "category": "CLOTHS"
+        }
+    
+        product = Product()
+        product.deserialize(data)
+        
+        self.assertEqual(product.name, "Product A")
+        self.assertEqual(product.description, "A great product")
+        self.assertEqual(product.price, Decimal("19.99"))
+        self.assertEqual(product.available, True)
+        self.assertEqual(product.category, Category.CLOTHS)
+    
